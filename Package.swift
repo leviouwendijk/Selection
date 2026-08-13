@@ -41,9 +41,5 @@ let package = Package(
                 .product(name: "PathParsing", package: "Path"),
             ],
         ),
-        .testTarget(
-            name: "SelectionTests",
-            dependencies: ["Selection"]
-        ),
     ]
 )

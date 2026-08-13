@@ -125,14 +125,13 @@ public enum SelectionScan {
                 == specifications.count
         )
 
-        let results = zip(
-            specifications,
-            pathBatch.results
-        )
-        .map {
+        let results = specifications.indices.map {
+            index in
+
             makeResult(
-                specification: $0.0,
-                pathResult: $0.1
+                specification: specifications[index],
+                pathResult: pathBatch.results[index],
+                relativeTo: anchor
             )
         }
 
@@ -158,13 +157,15 @@ public enum SelectionScan {
 
         return makeResult(
             specification: specification,
-            pathResult: pathResult
+            pathResult: pathResult,
+            relativeTo: anchor
         )
     }
 
     private static func makeResult(
         specification: SelectionScanSpecification,
-        pathResult: PathScanResult
+        pathResult: PathScanResult,
+        relativeTo anchor: PathAnchor
     ) -> SelectionScanResult {
         let matches = pathResult.matches.map {
             match in
@@ -175,7 +176,7 @@ public enum SelectionScan {
                 guard selection.path.matches(
                     path: match.path,
                     type: match.type,
-                    relativeTo: nil
+                    relativeTo: anchor
                 ) else {
                     continue
                 }
