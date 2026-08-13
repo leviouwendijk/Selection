@@ -81,7 +81,70 @@ public struct SelectionScanResult: Sendable, Codable, Equatable {
     }
 }
 
+
+public struct SelectionScanBatchResult:
+    Sendable,
+    Codable,
+    Equatable
+{
+    public let results: [SelectionScanResult]
+    public let logicalTraversalCount: Int
+    public let physicalTraversalCount: Int
+
+    public init(
+        results: [SelectionScanResult],
+        logicalTraversalCount: Int,
+        physicalTraversalCount: Int
+    ) {
+        self.results = results
+        self.logicalTraversalCount = logicalTraversalCount
+        self.physicalTraversalCount = physicalTraversalCount
+    }
+}
+
 public enum SelectionScan {
+    public static func scan(
+        _ specifications: [SelectionScanSpecification],
+        relativeTo anchor: PathAnchor = .cwd,
+        configuration: PathWalkConfiguration = .init()
+    ) throws -> SelectionScanBatchResult {
+        let plans = specifications.map {
+            PathScan.compile(
+                $0.pathSpecification,
+                relativeTo: anchor
+            )
+        }
+
+        let pathBatch = try PathScan.scan(
+            plans,
+            configuration: configuration
+        )
+
+        precondition(
+            pathBatch.results.count
+                == specifications.count
+        )
+
+        let results = zip(
+            specifications,
+            pathBatch.results
+        )
+        .map {
+            makeResult(
+                specification: $0.0,
+                pathResult: $0.1
+            )
+        }
+
+        return .init(
+            results: results,
+            logicalTraversalCount:
+                pathBatch.logicalTraversalCount,
+            physicalTraversalCount:
+                pathBatch.physicalTraversalCount
+        )
+    }
+
     public static func scan(
         _ specification: SelectionScanSpecification,
         relativeTo anchor: PathAnchor = .cwd,
@@ -93,24 +156,42 @@ public enum SelectionScan {
             configuration: configuration
         )
 
-        let matches = pathResult.matches.map { match in
+        return makeResult(
+            specification: specification,
+            pathResult: pathResult
+        )
+    }
+
+    private static func makeResult(
+        specification: SelectionScanSpecification,
+        pathResult: PathScanResult
+    ) -> SelectionScanResult {
+        let matches = pathResult.matches.map {
+            match in
+
             var selections: [ContentSelection] = []
 
             for selection in specification.selections {
                 guard selection.path.matches(
                     path: match.path,
                     type: match.type,
-                    relativeTo: anchor
+                    relativeTo: nil
                 ) else {
                     continue
                 }
 
-                guard let content = selection.content else {
+                guard let content =
+                    selection.content
+                else {
                     continue
                 }
 
-                if !selections.contains(content) {
-                    selections.append(content)
+                if !selections.contains(
+                    content
+                ) {
+                    selections.append(
+                        content
+                    )
                 }
             }
 
@@ -124,7 +205,9 @@ public enum SelectionScan {
 
         return SelectionScanResult(
             matches: matches,
-            warnings: analyze(specification)
+            warnings: analyze(
+                specification
+            )
         )
     }
 }
