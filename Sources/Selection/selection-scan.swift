@@ -90,15 +90,20 @@ public struct SelectionScanBatchResult:
     public let results: [SelectionScanResult]
     public let logicalTraversalCount: Int
     public let physicalTraversalCount: Int
+    public let physicalTraversals:
+        [PathScanPhysicalTraversalStatistics]
 
     public init(
         results: [SelectionScanResult],
         logicalTraversalCount: Int,
-        physicalTraversalCount: Int
+        physicalTraversalCount: Int,
+        physicalTraversals:
+            [PathScanPhysicalTraversalStatistics] = []
     ) {
         self.results = results
         self.logicalTraversalCount = logicalTraversalCount
         self.physicalTraversalCount = physicalTraversalCount
+        self.physicalTraversals = physicalTraversals
     }
 }
 
@@ -140,7 +145,9 @@ public enum SelectionScan {
             logicalTraversalCount:
                 pathBatch.logicalTraversalCount,
             physicalTraversalCount:
-                pathBatch.physicalTraversalCount
+                pathBatch.physicalTraversalCount,
+            physicalTraversals:
+                pathBatch.physicalTraversals
         )
     }
 
