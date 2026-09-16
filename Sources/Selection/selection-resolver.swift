@@ -8,7 +8,9 @@ public enum SelectionResolver {
         selections: [ContentSelection],
         options: LineReadOptions = .default
     ) throws -> ResolvedFileSelection {
-        let readResult = try LineReader(file).read(
+        let readResult = try LineReader(
+            file
+        ).read(
             options: options
         )
 
@@ -24,13 +26,39 @@ public enum SelectionResolver {
         readResult: LineReadResult,
         selections: [ContentSelection]
     ) -> ResolvedFileSelection {
-        ResolvedFileSelection(
-            file: file,
-            slices: slices(
-                file: file,
+        let slices: [FileLineSlice]
+
+        if selections.isEmpty {
+            slices = [
+                FileLineSlice(
+                    file: file,
+                    startLine: 1,
+                    lines: readResult.lines
+                ),
+            ]
+        } else {
+            let ranges = resolvedRanges(
                 lines: readResult.lines,
                 selections: selections
-            ),
+            )
+            .coalesced()
+
+            slices = readResult
+                .slices(
+                    ranges
+                )
+                .map { slice in
+                    FileLineSlice(
+                        file: file,
+                        startLine: slice.startLine,
+                        lines: slice.lines
+                    )
+                }
+        }
+
+        return ResolvedFileSelection(
+            file: file,
+            slices: slices,
             totalLineCount: readResult.lineCount,
             encodingUsed: readResult.encodingUsed,
             byteCount: readResult.byteCount,
@@ -43,7 +71,9 @@ public enum SelectionResolver {
         options: LineReadOptions = .default
     ) throws -> [ResolvedFileSelection] {
         try matches
-            .sorted { $0.url.path < $1.url.path }
+            .sorted { lhs, rhs in
+                lhs.url.path < rhs.url.path
+            }
             .map { match in
                 try resolve(
                     file: match.url,
@@ -58,7 +88,9 @@ public enum SelectionResolver {
         selections: [ContentSelection],
         options: LineReadOptions = .default
     ) throws -> [FileLineSlice] {
-        let readResult = try LineReader(file).read(
+        let readResult = try LineReader(
+            file
+        ).read(
             options: options
         )
 
@@ -80,112 +112,71 @@ public enum SelectionResolver {
                     file: file,
                     startLine: 1,
                     lines: lines
-                )
+                ),
             ]
         }
 
-        var out: [FileLineSlice] = []
-
-        for selection in selections {
-            switch selection {
-            case .lines(let range):
-                if let slice = lineRangeSlice(
-                    allLines: lines,
-                    file: file,
-                    range: range
-                ) {
-                    out.append(slice)
-                }
-
-            case .point(let position):
-                let range = LineRange(
-                    uncheckedStart: position.line,
-                    uncheckedEnd: position.line
-                )
-
-                if let slice = lineRangeSlice(
-                    allLines: lines,
-                    file: file,
-                    range: range
-                ) {
-                    out.append(slice)
-                }
-
-            case .span(let span):
-                let range = LineRange(
-                    uncheckedStart: span.start.line,
-                    uncheckedEnd: span.end.line
-                )
-
-                if let slice = lineRangeSlice(
-                    allLines: lines,
-                    file: file,
-                    range: range
-                ) {
-                    out.append(slice)
-                }
-
-            case .anchor(let anchor):
-                out.append(
-                    contentsOf: anchorSlices(
-                        allLines: lines,
-                        file: file,
-                        anchor: anchor
-                    )
-                )
-            }
+        return resolvedRanges(
+            lines: lines,
+            selections: selections
+        )
+        .coalesced()
+        .compactMap { range in
+            FileLineSlice(
+                file: file,
+                lines: lines,
+                range: range
+            )
         }
-
-        return mergeOverlapping(out)
     }
 }
 
 private extension SelectionResolver {
-    static func lineRangeSlice(
-        allLines: [String],
-        file: URL,
-        range: LineRange
-    ) -> FileLineSlice? {
-        guard !allLines.isEmpty else {
-            return nil
+    static func resolvedRanges(
+        lines: [String],
+        selections: [ContentSelection]
+    ) -> [LineRange] {
+        var ranges: [LineRange] = []
+
+        for selection in selections {
+            switch selection {
+            case .anchor(let anchor):
+                ranges.append(
+                    contentsOf: anchorRanges(
+                        lines: lines,
+                        anchor: anchor
+                    )
+                )
+
+            case .lines,
+                 .point,
+                 .span:
+                if let range = selection.lineRange {
+                    ranges.append(
+                        range
+                    )
+                }
+            }
         }
 
-        let startLine = max(1, range.start)
-        let endLine = min(
-            allLines.count,
-            range.end
-        )
-
-        guard endLine >= startLine else {
-            return nil
-        }
-
-        return FileLineSlice(
-            file: file,
-            startLine: startLine,
-            lines: Array(
-                allLines[(startLine - 1)..<endLine]
-            )
-        )
+        return ranges
     }
 
-    static func anchorSlices(
-        allLines: [String],
-        file: URL,
+    static func anchorRanges(
+        lines: [String],
         anchor: ContentAnchorSelection
-    ) -> [FileLineSlice] {
-        var out: [FileLineSlice] = []
+    ) -> [LineRange] {
+        var ranges: [LineRange] = []
 
-        for (index, line) in allLines.enumerated()
+        for (index, line) in lines.enumerated()
             where line.contains(anchor.text)
         {
             let startLine = max(
                 1,
                 index + 1 + anchor.offset
             )
-
             let endLine = min(
-                allLines.count,
+                lines.count,
                 startLine + anchor.count - 1
             )
 
@@ -193,61 +184,14 @@ private extension SelectionResolver {
                 continue
             }
 
-            out.append(
-                FileLineSlice(
-                    file: file,
-                    startLine: startLine,
-                    lines: Array(
-                        allLines[(startLine - 1)..<endLine]
-                    )
+            ranges.append(
+                LineRange(
+                    uncheckedStart: startLine,
+                    uncheckedEnd: endLine
                 )
             )
         }
 
-        return out
-    }
-
-    static func mergeOverlapping(
-        _ slices: [FileLineSlice]
-    ) -> [FileLineSlice] {
-        let sorted = slices.sorted {
-            if $0.file != $1.file {
-                return $0.file.path < $1.file.path
-            }
-
-            return $0.startLine < $1.startLine
-        }
-
-        var out: [FileLineSlice] = []
-
-        for slice in sorted {
-            guard let last = out.last,
-                  last.file == slice.file,
-                  slice.startLine <= (last.endLine + 1)
-            else {
-                out.append(slice)
-                continue
-            }
-
-            if slice.endLine <= last.endLine {
-                continue
-            }
-
-            let appendFromLine = last.endLine + 1
-            let offset = max(
-                0,
-                appendFromLine - slice.startLine
-            )
-
-            let mergedLines = last.lines + slice.lines.dropFirst(offset)
-
-            out[out.count - 1] = FileLineSlice(
-                file: last.file,
-                startLine: last.startLine,
-                lines: Array(mergedLines)
-            )
-        }
-
-        return out
+        return ranges
     }
 }

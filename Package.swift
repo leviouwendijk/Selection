@@ -41,5 +41,13 @@ let package = Package(
                 .product(name: "PathParsing", package: "Path"),
             ],
         ),
+        .executableTarget(
+            name: "SelectionTests",
+            dependencies: [
+                "Selection",
+                .product(name: "Position", package: "Position"),
+                .product(name: "Readers", package: "Readers"),
+            ]
+        ),
     ]
 )
