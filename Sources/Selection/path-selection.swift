@@ -1,6 +1,6 @@
 import Path
 
-public struct PathSelection: Sendable, Codable, Equatable {
+public struct PathSelection: Sendable, Codable, Equatable, Hashable {
     public var pattern: PathPattern
     public var content: ContentSelection?
 

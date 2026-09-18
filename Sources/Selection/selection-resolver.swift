@@ -62,7 +62,8 @@ public enum SelectionResolver {
             totalLineCount: readResult.lineCount,
             encodingUsed: readResult.encodingUsed,
             byteCount: readResult.byteCount,
-            existed: readResult.existed
+            existed: readResult.existed,
+            fileSnapshot: readResult.fileSnapshot
         )
     }
 

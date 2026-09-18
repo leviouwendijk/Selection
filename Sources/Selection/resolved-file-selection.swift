@@ -10,6 +10,7 @@ public struct ResolvedFileSelection: Sendable, Codable, Hashable {
     public let encodingUsed: TextEncoding?
     public let byteCount: Int
     public let existed: Bool
+    public let fileSnapshot: FileReadSnapshot?
 
     public init(
         file: URL,
@@ -17,7 +18,8 @@ public struct ResolvedFileSelection: Sendable, Codable, Hashable {
         totalLineCount: Int,
         encodingUsed: TextEncoding?,
         byteCount: Int,
-        existed: Bool
+        existed: Bool,
+        fileSnapshot: FileReadSnapshot? = nil
     ) {
         self.file = file.standardizedFileURL
         self.slices = slices
@@ -25,6 +27,7 @@ public struct ResolvedFileSelection: Sendable, Codable, Hashable {
         self.encodingUsed = encodingUsed
         self.byteCount = byteCount
         self.existed = existed
+        self.fileSnapshot = fileSnapshot
     }
 }
 

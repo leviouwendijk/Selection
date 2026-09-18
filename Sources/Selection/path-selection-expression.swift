@@ -1,6 +1,6 @@
 import Path
 
-public struct PathSelectionExpression: Sendable, Codable, Equatable {
+public struct PathSelectionExpression: Sendable, Codable, Equatable, Hashable {
     public var path: PathExpression
     public var content: ContentSelection?
 

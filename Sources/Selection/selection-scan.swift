@@ -1,7 +1,7 @@
 import Foundation
 import Path
 
-public enum SelectionScanWarning: Sendable, Codable, Equatable {
+public enum SelectionScanWarning: Sendable, Codable, Equatable, Hashable {
     case duplicateInclude(PathExpression)
     case duplicateExclude(PathExpression)
     case includeShadowedByExclude(
@@ -14,7 +14,7 @@ public enum SelectionScanWarning: Sendable, Codable, Equatable {
     )
 }
 
-public struct SelectionScanSpecification: Sendable, Codable, Equatable {
+public struct SelectionScanSpecification: Sendable, Codable, Equatable, Hashable {
     public var includes: [PathExpression]
     public var excludes: [PathExpression]
     public var selections: [PathSelectionExpression]
@@ -49,7 +49,7 @@ public extension SelectionScanSpecification {
     }
 }
 
-public struct SelectionScanMatch: Sendable, Codable, Equatable {
+public struct SelectionScanMatch: Sendable, Codable, Equatable, Hashable {
     public let url: URL
     public let path: StandardPath
     public let type: PathSegmentType
@@ -68,7 +68,7 @@ public struct SelectionScanMatch: Sendable, Codable, Equatable {
     }
 }
 
-public struct SelectionScanResult: Sendable, Codable, Equatable {
+public struct SelectionScanResult: Sendable, Codable, Equatable, Hashable {
     public let matches: [SelectionScanMatch]
     public let warnings: [SelectionScanWarning]
 

@@ -64,6 +64,46 @@ func selectionResolverUsesSharedRangeAndSlicePrimitives() throws {
     )
 }
 
+func selectionResolverPreservesFileSnapshot() throws {
+    let file = FileManager.default.temporaryDirectory
+        .appendingPathComponent(
+            "selection-snapshot-\(UUID().uuidString).swift"
+        )
+
+    defer {
+        try? FileManager.default.removeItem(
+            at: file
+        )
+    }
+
+    try "one\ntwo\nthree".write(
+        to: file,
+        atomically: true,
+        encoding: .utf8
+    )
+
+    let resolved = try SelectionResolver.resolve(
+        file: file,
+        selections: [
+            .lines(
+                try LineRange(
+                    start: 1,
+                    end: 2
+                )
+            ),
+        ]
+    )
+
+    try expect(
+        resolved.fileSnapshot != nil,
+        "resolved selection preserves file snapshot"
+    )
+    try expect(
+        resolved.fileSnapshot?.contentFingerprint != nil,
+        "resolved selection preserves content fingerprint"
+    )
+}
+
 func anchorSelectionsStillResolveAndCoalesce() throws {
     let file = URL(
         fileURLWithPath: "/tmp/anchor.txt"
@@ -103,5 +143,6 @@ func anchorSelectionsStillResolveAndCoalesce() throws {
 }
 
 try selectionResolverUsesSharedRangeAndSlicePrimitives()
+try selectionResolverPreservesFileSnapshot()
 try anchorSelectionsStillResolveAndCoalesce()
 print("SelectionTests: passed")
