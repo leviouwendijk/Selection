@@ -11,8 +11,8 @@ let package = Package(
     products: [
     ],
     dependencies: [
-        .package(url: "https://github.com/leviouwendijk/Position.git", branch: "master"),
-        .package(url: "https://github.com/leviouwendijk/Readers.git", branch: "master"),
+        .package(url: "https://github.com/swift-lco/Position.git", branch: "master"),
+        .package(url: "https://github.com/swift-lco/Readers.git", branch: "master"),
         .package(path: ".."),
     ],
     targets: [
